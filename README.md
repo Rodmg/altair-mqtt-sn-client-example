@@ -6,7 +6,7 @@ An example of an Aquila 2.0 MQTT-SN client implementation for the [Altair](http:
 
 For compiling and uploading this code to the board you need the PlatformIO tools and the [PlatformIO IDE](http://platformio.org/get-started).
 
-You also need to install the Altair board support for PlatformIO (WIP).
+You also need to install the [Altair board support for PlatformIO](https://github.com/Rodmg/altair-platformio).
 
 ## Using
 
