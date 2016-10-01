@@ -5,7 +5,7 @@
 using namespace MQTTSN;
 
 WSNetwork network;
-Client client(network);
+Client client(network, 1000);
 
 // Topic strings
 const char lastWill[] = "lastwill";
@@ -35,7 +35,7 @@ bool connectMqtt()
   // Set MQTT last will topic and blank message
   client.setWill(lastWill, NULL, 0);
   // Setup MQTT connection
-  MQTTSNPacket_connectData options = MQTTSNPacket_connectData_initializer;
+  static MQTTSNPacket_connectData options = MQTTSNPacket_connectData_initializer;
   options.duration = 10; // Keep alive interval, Seconds
   options.cleansession = true;
   options.willFlag = true;
@@ -62,7 +62,8 @@ void setup()
 {
   Serial.begin(9600);
   // Start with automatic address given by Aquila Mesh
-  network.begin();
+  char pass[16] = {1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6};
+  network.begin(0x07, 23, pass);
   // Start timer for publishing "client/publish" every 5 seconds
   timer.countdown_ms(5000);
 }
@@ -71,6 +72,10 @@ void loop()
 {
   // Attend network tasks
   yield();
+  if(network.inPairMode()) {
+    network.loop();
+    return;
+  }
   client.loop();
   if(!client.isConnected())
   {
@@ -86,6 +91,7 @@ void loop()
     client.publish(publishTopic, payload, strlen(payload), QOS1, retained);
     // Restart timer
     timer.countdown_ms(5000);
+    Serial.println("Published message");
   }
 
 }
