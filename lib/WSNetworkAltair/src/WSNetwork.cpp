@@ -4,6 +4,9 @@
 static uint8_t recBuffer[256];
 static uint8_t attendPending;
 
+static TxPacket packet;
+static VirtualTimer timer;
+
 #define ENC_KEY_SIZE 16
 static uint8_t voidKey[ENC_KEY_SIZE] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
 
@@ -44,6 +47,7 @@ WSNetwork::WSNetwork()
   attendPending = 0;
   pairMode = false;
   lastPairReqSent = 0;
+  meshInited = false;
   randomSeed(analogRead(7));
   randomId = random(0xFF);
 }
@@ -52,7 +56,7 @@ bool WSNetwork::begin()
 {
   uint8_t addr = Storage.getAddr();
   uint8_t pan = Storage.getPan();
-  static uint8_t key[ENC_KEY_SIZE];
+  uint8_t key[ENC_KEY_SIZE];
   Storage.getKey(key);
   if(addr == 0 || addr == 0xFF) return enterPairMode();
   if(pan == 0 || pan == 0xFF) return enterPairMode();
@@ -61,10 +65,17 @@ bool WSNetwork::begin()
 
 bool WSNetwork::begin(uint16_t addr, uint16_t pan = 0x0001, uint8_t * key = NULL)
 {
-  Mesh.begin(addr);
+  // Shouldn't call Mesh.begin multiple times, or unexpected things happen
+  if(!meshInited)
+  {
+    Mesh.begin(addr);
+    Mesh.openEndpoint(11, receiveMessage);
+    meshInited = true;
+  }
+
+  Mesh.setAddr(addr);
   Mesh.setPanId(pan);
   setKey(key);
-  Mesh.openEndpoint(11, receiveMessage);
   return true;
 }
 
@@ -91,7 +102,6 @@ int WSNetwork::write(unsigned char* buffer, int len, unsigned long timeout)
   // Dont allow normal operation in pair mode
   if(pairMode) return 0;
   // forming packet
-	static TxPacket packet;
 	packet.dstAddr = HUB;
 	packet.dstEndpoint = 11;
 	packet.srcEndpoint = 11;
@@ -103,7 +113,6 @@ int WSNetwork::write(unsigned char* buffer, int len, unsigned long timeout)
 
   sendConfirmed = false;
 	Mesh.sendPacket(&packet);
-  static VirtualTimer timer;
   timer.countdown_ms(timeout);
   while(!sendConfirmed && !timer.expired())
   {
@@ -135,7 +144,7 @@ void WSNetwork::yield()
 bool WSNetwork::enterPairMode()
 {
   pairMode = true;
-  return begin(0x00, 0x00, NULL);
+  return begin(0x0000, 0x0000, NULL);
 }
 
 bool WSNetwork::enterNormalMode()
@@ -154,7 +163,6 @@ void WSNetwork::sendPairReq()
   uint8_t buffer[3] = { 3, 0x03, randomId };
   uint8_t len = 3;
   // forming packet
-	static TxPacket packet;
 	packet.dstAddr = HUB;
 	packet.dstEndpoint = 11;
 	packet.srcEndpoint = 11;
@@ -166,7 +174,6 @@ void WSNetwork::sendPairReq()
 
   sendConfirmed = false;
 	Mesh.sendPacket(&packet);
-  static VirtualTimer timer;
   timer.countdown_ms(500);
   while(!sendConfirmed && !timer.expired())
   {

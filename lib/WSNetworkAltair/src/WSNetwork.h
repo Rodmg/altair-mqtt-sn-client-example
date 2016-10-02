@@ -14,6 +14,7 @@ private:
   bool pairMode;
   uint8_t randomId;
   unsigned long lastPairReqSent;
+  bool meshInited;
 public:
   WSNetwork();
   bool begin();

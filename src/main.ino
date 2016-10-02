@@ -15,6 +15,39 @@ const char subscribeTopic[] = "client/subscribe";
 // Timer for publishing example topic repeatedly
 VirtualTimer timer;
 
+// Pair support
+#define PAIR_BTN 33
+#define PAIR_LED 14
+
+void setupPair()
+{
+  pinMode(PAIR_BTN, INPUT);
+  pinMode(PAIR_LED, OUTPUT);
+  digitalWrite(PAIR_LED, HIGH);
+}
+
+void attendPairToggle()
+{
+  if(!digitalRead(PAIR_BTN))
+  {
+    if(network.inPairMode())
+    {
+      network.enterNormalMode();
+      digitalWrite(PAIR_LED, HIGH);
+    }
+    else
+    {
+      network.enterPairMode();
+      digitalWrite(PAIR_LED, LOW);
+    }
+    delay(1000);
+  }
+  // Manage indicator LED state
+  if(network.inPairMode()) digitalWrite(PAIR_LED, LOW);
+  else digitalWrite(PAIR_LED, HIGH);
+}
+
+
 // Function that handles the "client/subscribe" topic
 void subscribeHandler(struct MQTTSN::MessageData &msg)
 {
@@ -62,16 +95,19 @@ void setup()
 {
   Serial.begin(9600);
   // Start with automatic address given by Aquila Mesh
-  char pass[16] = {1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6};
-  network.begin(0x07, 23, pass);
+  //char pass[16] = {1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6};
+  //network.begin(0x07, 12, pass);
+  network.begin();
   // Start timer for publishing "client/publish" every 5 seconds
   timer.countdown_ms(5000);
+  setupPair();
 }
 
 void loop()
 {
   // Attend network tasks
   yield();
+  attendPairToggle();
   if(network.inPairMode()) {
     network.loop();
     return;
